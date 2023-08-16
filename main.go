@@ -41,6 +41,9 @@ func main() {
 		mux.HandleFunc(fmt.Sprintf("/%s", key), handler(url, config.Token))
 	}
 
+	// 为 /rule 路径添加新的处理程序
+	mux.HandleFunc("/rule", ruleHandler)
+
 	Info.Println("Starting server on port 8080")
 	http.ListenAndServe(":8080", mux)
 }
@@ -106,15 +109,58 @@ func handler(url string, confToken string) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		newBody := processRules(string(body), r.Host)
+		schema := "http" // 默认值
+		if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
+			schema = forwardedProto
+		}
+
+		host := r.Host
+		hostname := fmt.Sprintf("%s://%s", schema, host)
+		fullURL := fmt.Sprintf("%s%s", hostname, r.URL)
+		newBody := processRules(string(body), hostname, fullURL)
 
 		w.Write([]byte(newBody))
 	}
 }
 
+// ruleHandler 处理 /rule 路径的请求
+func ruleHandler(w http.ResponseWriter, r *http.Request) {
+	values := r.URL.Query()
+	ruleType := values.Get("type")
+	if ruleType == "" {
+		http.Error(w, "type is required", http.StatusBadRequest)
+		return
+	}
+
+	// 拼接URL路径
+	path := fmt.Sprintf("rules/myclash/Merge/%s.list", ruleType)
+	// 进行Base64编码
+	encodedPath := base64.RawStdEncoding.EncodeToString([]byte(path))
+
+	// 使用Base64编码拼接新的URL
+	newURL := fmt.Sprintf("https://sub.zaptiah.com/getruleset?type=1&url=%s", encodedPath)
+
+	// 访问新的URL并获取其内容
+	response, err := http.Get(newURL)
+	if err != nil {
+		http.Error(w, "Failed to get content from the URL", http.StatusInternalServerError)
+		return
+	}
+	defer response.Body.Close()
+
+	content, err := io.ReadAll(response.Body)
+	if err != nil {
+		http.Error(w, "Failed to read content from the response", http.StatusInternalServerError)
+		return
+	}
+
+	// 将内容返回给用户
+	w.Write(content)
+}
+
 // processRules 找到以RULE-SET开头，并且第2段以_ipcidr结尾的行，并在这一行最后面加入,no-solve
 // 对 Surge 的规则，就修改url的值，变成可读的
-func processRules(body, hostname string) string {
+func processRules(body, hostname, fullURL string) string {
 	Info.Println("Processing rules")
 
 	scanner := bufio.NewScanner(strings.NewReader(body))
@@ -122,7 +168,12 @@ func processRules(body, hostname string) string {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "RULE-SET,https://sub.zaptiah.com/getruleset?type=1") {
+		if strings.HasPrefix(line, "#!MANAGED-CONFIG") {
+			parts := strings.Split(line, " ")
+			if len(parts) > 1 {
+				line = strings.Replace(line, parts[1], fullURL, 1)
+			}
+		} else if strings.HasPrefix(line, "RULE-SET,https://sub.zaptiah.com/getruleset?type=1") {
 			line = processSurgeRule(line, hostname)
 		} else if strings.HasPrefix(line, "  - RULE-SET,") && strings.HasSuffix(strings.Split(line, ",")[1], "_ipcidr") {
 			line = line + ",no-resolve"
@@ -136,7 +187,8 @@ func processRules(body, hostname string) string {
 
 // processSurgeRule 处理Surge规则，主要把url后面的值变成可读
 func processSurgeRule(line, hostname string) string {
-	log.Println("Processing Surge rule: ", line)
+	Info.Println("Processing Surge rule: ", line)
+
 	// Extract the url value
 	urlValueStartIdx := strings.Index(line, "url=") + 4
 	urlValueEndIdx := strings.Index(line[urlValueStartIdx:], ",")
@@ -148,13 +200,10 @@ func processSurgeRule(line, hostname string) string {
 
 	urlValue := line[urlValueStartIdx:urlValueEndIdx]
 
-	log.Println("urlValue: ", urlValue)
-
 	// Base64 decode the value
 	decodedValue, err := base64.RawStdEncoding.DecodeString(urlValue)
 	if err != nil {
-		log.Println("Error decoding base64 value: ", err)
-		// Handle error or just return the original line
+		Error.Println("Error decoding base64 value: ", err)
 		return line
 	}
 
@@ -164,7 +213,7 @@ func processSurgeRule(line, hostname string) string {
 
 	// Construct the new line
 	typePart := strings.TrimSuffix(lastPart, ".list")
-	newLine := "RULE-SET,https://" + hostname + "/rule?type=" + typePart
+	newLine := "RULE-SET," + hostname + "/rule?type=" + typePart
 
 	// Append other parts from the original line
 	remainingParts := strings.SplitN(line[urlValueEndIdx:], ",", 3)
