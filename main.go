@@ -2,25 +2,18 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 
+	"subruleset/config"
 	"subruleset/tlog"
-
-	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
-	Token string            `yaml:"token"`
-	Urls  map[string]string `yaml:"urls"`
-}
-
 func main() {
-	config, err := readConfig("config.yaml")
+	err := config.Watch("config.yaml")
 	if err != nil {
-		tlog.Error.Fatalf("Failed to read config: %v", err)
+		tlog.Error.Fatalf("Failed to watch config: %v", err)
 	}
+	config := config.Get()
 
 	if config.Token == "" {
 		tlog.Error.Fatal("Token is empty")
@@ -36,30 +29,8 @@ func main() {
 	mux.HandleFunc("/rule", ruleHandler)
 
 	tlog.Info.Println("Starting server on port 8080")
-	http.ListenAndServe(":8080", mux)
-}
-
-// readConfig 读取配置文件
-func readConfig(filename string) (Config, error) {
-	tlog.Info.Printf("Reading configuration from file: %s", filename)
-
-	var config Config
-	file, err := os.Open(filename)
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
-		return config, err
+		tlog.Error.Fatalf("Failed to start server: %v", err)
 	}
-	defer file.Close()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return config, err
-	}
-
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		return config, err
-	}
-
-	tlog.Info.Println("Successfully read configuration")
-	return config, nil
 }
