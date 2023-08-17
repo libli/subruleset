@@ -8,8 +8,10 @@ touch config.yaml
 内容如下：
 ```yaml
 token: "自己随便设置"
+baseURL: https://mydomain.com # subconverter服务的域名
 urls:
-  naxi: http://127.0.0.1:25500/sub?target=clash&expand=false&url=[机场url]&config=[配置文件url]
+  nexi: /sub?target=clash&expand=false&url=[机场url]&config=[配置文件url]
+  mojie-surge: /sub?target=surge&ver=4&expand=false&url=[机场url]&config=[配置文件url]
 ```
 
 其中key: naxi 自定义，为最终url的path部分。建议和你机场名一致。
