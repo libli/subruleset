@@ -13,8 +13,9 @@ import (
 
 // Config represents the configuration for the application
 type Config struct {
-	Token string            `yaml:"token"`
-	Urls  map[string]string `yaml:"urls"`
+	Token   string            `yaml:"token"`
+	BaseURL string            `yaml:"baseURL"`
+	Urls    map[string]string `yaml:"urls"`
 }
 
 var cfg atomic.Value

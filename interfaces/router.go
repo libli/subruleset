@@ -13,8 +13,8 @@ func SetupRouter(config config.Config) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// 根据配置设置路由处理程序
-	for key, url := range config.Urls {
-		subHandler := handler.NewSubHandler(url, config.Token)
+	for key, _ := range config.Urls {
+		subHandler := handler.NewSubHandler(key)
 		mux.HandleFunc(fmt.Sprintf("/%s", key), subHandler.Handle)
 	}
 

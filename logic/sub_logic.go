@@ -8,29 +8,35 @@ import (
 	"net/url"
 	"strings"
 
+	"subruleset/config"
 	"subruleset/tlog"
 )
 
 type SubLogic struct {
-	url   string
-	token string
+	subKey string
 }
 
-func NewSubLogic(url, token string) *SubLogic {
+func NewSubLogic(subKey string) *SubLogic {
 	return &SubLogic{
-		url:   url,
-		token: token,
+		subKey: subKey,
 	}
 }
 
 // ValidateToken 验证token
 func (l *SubLogic) ValidateToken(token string) bool {
-	return token == l.token
+	config := config.Get()
+	return token == config.Token
 }
 
 // FetchSubscriptions 从机场获取订阅
 func (l *SubLogic) FetchSubscriptions() (http.Header, string, error) {
-	return getHeadersAndContentFromURL(l.url)
+	config := config.Get()
+	urlPath, exists := config.Urls[l.subKey]
+	if !exists {
+		return nil, "", fmt.Errorf("URL key %s not found", l.subKey)
+	}
+	fullURL := fmt.Sprintf("%s%s", config.BaseURL, urlPath)
+	return getHeadersAndContentFromURL(fullURL)
 }
 
 // Clash 处理Clash规则，添加no-resolve

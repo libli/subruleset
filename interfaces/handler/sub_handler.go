@@ -13,9 +13,9 @@ type SubHandler struct {
 }
 
 // NewSubHandler 创建一个新的SubHandler
-func NewSubHandler(url, token string) *SubHandler {
+func NewSubHandler(subKey string) *SubHandler {
 	return &SubHandler{
-		logic: logic.NewSubLogic(url, token),
+		logic: logic.NewSubLogic(subKey),
 	}
 }
 
