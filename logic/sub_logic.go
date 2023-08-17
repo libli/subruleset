@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -31,17 +30,7 @@ func (l *SubLogic) ValidateToken(token string) bool {
 
 // FetchSubscriptions 从机场获取订阅
 func (l *SubLogic) FetchSubscriptions() (http.Header, string, error) {
-	resp, err := http.Get(l.url)
-	if err != nil {
-		return nil, "", fmt.Errorf("error fetching data from URL: %s, err: %v", l.url, err)
-	}
-	defer resp.Body.Close()
-
-	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", fmt.Errorf("error reading response body: %v", err)
-	}
-	return resp.Header, string(bytes), nil
+	return getHeadersAndContentFromURL(l.url)
 }
 
 // Clash 处理Clash规则，添加no-resolve
