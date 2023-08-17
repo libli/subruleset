@@ -3,10 +3,12 @@ package logic
 import (
 	"encoding/base64"
 	"fmt"
+
+	"subruleset/config"
 )
 
 const (
-	baseURL       = "https://sub.zaptiah.com/getruleset"
+	path          = "/getruleset"
 	rulesPathTmpl = "rules/myclash/Merge/%s.list"
 )
 
@@ -20,9 +22,10 @@ func NewRuleLogic() *RuleLogic {
 
 // FetchRuleSet 获取规则集
 func (l *RuleLogic) FetchRuleSet(ruleType string) (string, error) {
-	path := fmt.Sprintf(rulesPathTmpl, ruleType)
-	encodedPath := base64.RawStdEncoding.EncodeToString([]byte(path))
-	newURL := fmt.Sprintf("%s?type=1&url=%s", baseURL, encodedPath)
+	config := config.Get()
+	rulePath := fmt.Sprintf(rulesPathTmpl, ruleType)
+	encodedPath := base64.RawStdEncoding.EncodeToString([]byte(rulePath))
+	newURL := fmt.Sprintf("%s%s?type=1&url=%s", config.BaseURL, path, encodedPath)
 	_, content, err := getHeadersAndContentFromURL(newURL)
 	return content, err
 }
