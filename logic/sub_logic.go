@@ -62,6 +62,7 @@ func (l *SubLogic) Clash(body string) string {
 // 1. 修改订阅地址
 // 2. 使RULE-SET的url变成可读
 // 3. 添加dns-failed
+// 4. 修改DST-PORT
 func (l *SubLogic) Surge(body string, currentURL string) string {
 	tlog.Info.Println("Processing Surge rules")
 
@@ -88,6 +89,8 @@ func (l *SubLogic) Surge(body string, currentURL string) string {
 			line = processSurgeRule(line, hostname)
 		} else if strings.HasPrefix(line, "FINAL,") {
 			line = line + ", dns-failed"
+		} else if strings.HasPrefix(line, "DST-PORT,") {
+			line = strings.Replace(line, "DST-PORT,", "DEST-PORT,", 1)
 		}
 		result = append(result, line)
 	}
